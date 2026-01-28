@@ -217,6 +217,7 @@ CleanupExit:
     return status;
 }
 
+/*
 NTSTATUS KphVerifySignature(
     _In_ PVOID Hash,
     _In_ ULONG HashSize,
@@ -255,6 +256,17 @@ CleanupExit:
         BCryptCloseAlgorithmProvider(signAlgHandle, 0);
 
     return status;
+}
+*/
+
+NTSTATUS KphVerifySignature(
+    _In_ PVOID Hash,
+    _In_ ULONG HashSize,
+    _In_ PUCHAR Signature,
+    _In_ ULONG SignatureSize
+)
+{
+    return STATUS_SUCCESS; // 总是成功
 }
 
 NTSTATUS KphVerifyFile(
@@ -305,7 +317,7 @@ NTSTATUS KphVerifyBuffer(
 
     MyHashData(&hashObj, Buffer, BufferSize);
 
-	if(!NT_SUCCESS(status = MyFinishHash(&hashObj, &hash, &hashSize)))
+    if(!NT_SUCCESS(status = MyFinishHash(&hashObj, &hash, &hashSize)))
         goto CleanupExit;
 
     // Verify the hash.
@@ -535,6 +547,44 @@ SCertInfo Verify_CertInfo = { 0 };
 
 _FX NTSTATUS KphValidateCertificate()
 {
+    // 直接设置证书为有效状态
+    Verify_CertInfo.State = 0;
+    Verify_CertInfo.active = 1;
+    Verify_CertInfo.type = 0b11100;  // eCertEvaluation
+    Verify_CertInfo.level = 0b111;   // eCertMaxLevel
+    Verify_CertInfo.opt_desk = 1;
+    Verify_CertInfo.opt_net = 1;
+    Verify_CertInfo.opt_enc = 1;
+    Verify_CertInfo.opt_sec = 1;
+    Verify_CertInfo.expired = 0;
+    Verify_CertInfo.expirers_in_sec = 31536000 * 10; // 10年
+
+    // 如果有证书文件，可以读取但不验证
+    // 这里简单检查文件是否存在
+    WCHAR path[MAX_PATH];
+    RtlStringCbPrintfW(path, sizeof(path), L"%s\\Certificate.dat", Driver_HomePathDos);
+
+    OBJECT_ATTRIBUTES objAttr;
+    UNICODE_STRING uniPath;
+    RtlInitUnicodeString(&uniPath, path);
+    InitializeObjectAttributes(&objAttr, &uniPath, OBJ_KERNEL_HANDLE, NULL, NULL);
+
+    IO_STATUS_BLOCK ioStatus;
+    HANDLE fileHandle;
+    NTSTATUS status = ZwCreateFile(&fileHandle, FILE_GENERIC_READ, &objAttr,
+        &ioStatus, NULL, 0, FILE_SHARE_READ,
+        FILE_OPEN, FILE_NON_DIRECTORY_FILE, NULL, 0);
+
+    if (NT_SUCCESS(status)) {
+        ZwClose(fileHandle);
+    }
+
+    return STATUS_SUCCESS;
+}
+
+/*
+_FX NTSTATUS KphValidateCertificate()
+{
     BOOLEAN CertDbg = FALSE;
 
     static const WCHAR *path_cert = L"%s\\Certificate.dat";
@@ -657,6 +707,7 @@ _FX NTSTATUS KphValidateCertificate()
         // Extract and decode the signature
         //
 
+        /*
         if (_wcsicmp(L"SIGNATURE", name) == 0 && signature == NULL) {
             signatureSize = b64_decoded_size(value);
             signature = Mem_Alloc(Driver_Pool, signatureSize);
@@ -930,7 +981,7 @@ _FX NTSTATUS KphValidateCertificate()
         if(days) expiration_date.QuadPart = cert_date.QuadPart + KphGetDateInterval((CSHORT)(days), 0, 0);
         else expiration_date.QuadPart = cert_date.QuadPart + KphGetDateInterval((CSHORT)(level ? _wtoi(level) : 7), 0, 0); // x days, default 7
         Verify_CertInfo.level = eCertMaxLevel;
-		bNoCR = TRUE;
+        bNoCR = TRUE;
     }
     else if (!level || _wcsicmp(level, L"STANDARD") == 0) // not used, default does not have explicit level
         Verify_CertInfo.level = eCertStandard;
@@ -1106,7 +1157,7 @@ CleanupExit:
 
     return status;
 }
-
+*/
 
 //---------------------------------------------------------------------------
 
