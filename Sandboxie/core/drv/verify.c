@@ -547,39 +547,39 @@ SCertInfo Verify_CertInfo = { 0 };
 
 _FX NTSTATUS KphValidateCertificate()
 {
-    // 直接设置证书为有效状态
-    Verify_CertInfo.State = 0;
-    Verify_CertInfo.active = 1;
-    Verify_CertInfo.type = 0b11100;  // eCertEvaluation
-    Verify_CertInfo.level = 0b111;   // eCertMaxLevel
-    Verify_CertInfo.opt_desk = 1;
-    Verify_CertInfo.opt_net = 1;
-    Verify_CertInfo.opt_enc = 1;
-    Verify_CertInfo.opt_sec = 1;
-    Verify_CertInfo.expired = 0;
-    Verify_CertInfo.expirers_in_sec = 31536000 * 10; // 10年
+	// +++ 修改：完全不读取证书文件，直接设置有效的证书状态 +++
 
-    // 如果有证书文件，可以读取但不验证
-    // 这里简单检查文件是否存在
-    WCHAR path[MAX_PATH];
-    RtlStringCbPrintfW(path, sizeof(path), L"%s\\Certificate.dat", Driver_HomePathDos);
+	// 清空证书状态
+	Verify_CertInfo.State = 0;
 
-    OBJECT_ATTRIBUTES objAttr;
-    UNICODE_STRING uniPath;
-    RtlInitUnicodeString(&uniPath, path);
-    InitializeObjectAttributes(&objAttr, &uniPath, OBJ_KERNEL_HANDLE, NULL, NULL);
+	// 设置证书为激活状态
+	Verify_CertInfo.active = 1;
 
-    IO_STATUS_BLOCK ioStatus;
-    HANDLE fileHandle;
-    NTSTATUS status = ZwCreateFile(&fileHandle, FILE_GENERIC_READ, &objAttr,
-        &ioStatus, NULL, 0, FILE_SHARE_READ,
-        FILE_OPEN, FILE_NON_DIRECTORY_FILE, NULL, 0);
+	// 设置证书类型和级别（根据verify.h）
+	Verify_CertInfo.type = eCertEvaluation;    // 0b11100 (28)
+	Verify_CertInfo.level = eCertMaxLevel;     // 0b111 (7)
 
-    if (NT_SUCCESS(status)) {
-        ZwClose(fileHandle);
-    }
+	// 开启所有高级功能
+	Verify_CertInfo.opt_desk = 1;  // 隔离桌面
+	Verify_CertInfo.opt_net = 1;   // 高级网络功能
+	Verify_CertInfo.opt_enc = 1;   // 加密和保护功能
+	Verify_CertInfo.opt_sec = 1;   // 安全增强模式
 
-    return STATUS_SUCCESS;
+	// 设置永不过期
+	Verify_CertInfo.expired = 0;
+	Verify_CertInfo.outdated = 0;
+	Verify_CertInfo.grace_period = 0;
+	Verify_CertInfo.locked = 0;
+	Verify_CertInfo.lock_req = 0;
+
+	// 设置一个很长的过期时间（10年）
+	Verify_CertInfo.expirers_in_sec = 31536000 * 10;
+
+	// 直接返回成功，跳过所有文件读取和验证
+	return STATUS_SUCCESS;
+
+	// +++ 注意：原函数的所有代码都被跳过，不需要处理 +++
+	// 原函数从这里开始的所有代码都不会被执行
 }
 
 /*
